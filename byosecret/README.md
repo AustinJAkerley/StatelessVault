@@ -1,0 +1,147 @@
+# BYOSecret (Azure Functions Python v2)
+
+## Overview
+BYOSecret is a stateless encryption/decryption API built with Azure Functions Python v2 using the decorator-based `function_app.py` model.
+
+Endpoints:
+- `POST /api/encrypt`
+- `POST /api/decrypt`
+
+Crypto stack:
+- Key derivation: Argon2id
+- Encryption: AES-256-GCM
+
+The caller provides the secret each time. The service does not persist plaintext, ciphertext, secrets, sessions, keys, or user payloads.
+
+## Threat model
+BYOSecret is intended for application-level confidentiality where clients need portable, stateless encryption.
+
+### What this protects
+- Confidentiality and integrity of plaintext when ciphertext package is exposed.
+- Tamper detection using AES-GCM authentication.
+- Brute-force resistance improvement via Argon2id key derivation.
+
+### What this does not protect
+- Weak or reused user secrets.
+- Endpoint abuse without upstream controls.
+- Compromised client environments.
+- Data loss if the user forgets their secret.
+
+## Design notes
+- **Stateless API:** no server-side storage of secrets or encrypted material.
+- **User must remember secret:** decryption depends entirely on caller-supplied secret.
+- **Salt is public:** salt uniqueness prevents precomputed attacks and is required for deterministic key derivation.
+- **Nonce is public:** AES-GCM nonce is not secret; uniqueness per key is required.
+- **AES-GCM:** provides authenticated encryption (confidentiality + integrity).
+- **Argon2id:** memory-hard KDF suitable for password-derived keys.
+
+## Rate limiting
+A simple in-memory fixed-window limiter is implemented inside the function instance:
+- `10,000` requests per `60` seconds (instance total, not per IP).
+
+If exceeded, the API returns HTTP `429`:
+
+```json
+{
+  "error": "rate_limited",
+  "message": "Global request limit exceeded. Try again later."
+}
+```
+
+### Important serverless limitation
+In-memory rate limiting is **not globally accurate** across scaled-out Azure Functions instances. For real spend protection and global throttling, place **Azure API Management** in front of the Function App and enforce a global policy there.
+
+## API examples
+
+### Encrypt
+```bash
+curl -X POST http://localhost:7071/api/encrypt \
+  -H "Content-Type: application/json" \
+  -d '{
+    "plaintext": "Attack at dawn.",
+    "secret": "correct horse battery staple"
+  }'
+```
+
+### Decrypt
+```bash
+curl -X POST http://localhost:7071/api/decrypt \
+  -H "Content-Type: application/json" \
+  -d '{
+    "version": 1,
+    "algorithm": "Argon2id/AES-256-GCM",
+    "salt": "<base64>",
+    "nonce": "<base64>",
+    "ciphertext": "<base64>",
+    "tag": "<base64>",
+    "secret": "correct horse battery staple"
+  }'
+```
+
+## Local setup
+1. Install Python 3.10+ and Azure Functions Core Tools.
+2. Create and activate a virtual environment.
+3. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+4. Copy local settings:
+   ```bash
+   cp local.settings.json.example local.settings.json
+   ```
+5. Run locally:
+   ```bash
+   func start
+   ```
+
+Local URLs:
+- `http://localhost:7071/api/encrypt`
+- `http://localhost:7071/api/decrypt`
+
+## Azure deployment (Linux Python Functions)
+Azure Functions Python v2 uses decorator-based `function_app.py`.
+
+1. Login:
+   ```bash
+   az login
+   ```
+2. Create resource group:
+   ```bash
+   az group create --name rg-byosecret --location eastus
+   ```
+3. Create storage account:
+   ```bash
+   az storage account create \
+     --name byosecretstorage123 \
+     --location eastus \
+     --resource-group rg-byosecret \
+     --sku Standard_LRS
+   ```
+4. Create Linux consumption Function App:
+   ```bash
+   az functionapp create \
+     --resource-group rg-byosecret \
+     --consumption-plan-location eastus \
+     --runtime python \
+     --runtime-version 3.11 \
+     --functions-version 4 \
+     --name byosecret-func-app \
+     --storage-account byosecretstorage123 \
+     --os-type Linux
+   ```
+5. Publish with Azure Functions Core Tools:
+   ```bash
+   func azure functionapp publish byosecret-func-app
+   ```
+6. Test public endpoints:
+   ```bash
+   curl -X POST https://byosecret-func-app.azurewebsites.net/api/encrypt \
+     -H "Content-Type: application/json" \
+     -d '{"plaintext":"hello","secret":"my secret"}'
+   ```
+
+## Security notes
+- Never log plaintext, secrets, ciphertext, or derived keys.
+- Random salt/nonce generation uses secure randomness (`os.urandom`).
+- Authenticated encryption is implemented via `cryptography` AES-GCM.
+- No custom crypto primitives are implemented.
