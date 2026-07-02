@@ -140,6 +140,24 @@ Azure Functions Python v2 uses decorator-based `function_app.py`.
      -d '{"plaintext":"hello","secret":"my secret"}'
    ```
 
+## CI/CD (GitHub Actions)
+A deployment pipeline is defined in `.github/workflows/deploy-azure-functions.yml`.
+
+Behavior:
+- On pull requests targeting `main`: installs dependencies and runs the test suite.
+- On pushes to `main` (and manual `workflow_dispatch`): runs tests, then deploys to Azure Functions.
+
+### Required configuration
+1. Add a repository secret named `AZURE_FUNCTIONAPP_PUBLISH_PROFILE` containing the Function App publish profile.
+   - Download it from the Azure Portal (Function App → *Get publish profile*) or via CLI:
+     ```bash
+     az functionapp deployment list-publishing-profiles \
+       --name byosecret-func-app \
+       --resource-group rg-byosecret \
+       --xml
+     ```
+2. If your Function App name differs, update `AZURE_FUNCTIONAPP_NAME` in the workflow `env` block.
+
 ## Security notes
 - Never log plaintext, secrets, ciphertext, or derived keys.
 - Random salt/nonce generation uses secure randomness (`os.urandom`).
