@@ -1,0 +1,4 @@
+azure-functions
+cryptography
+argon2-cffi
+pytest

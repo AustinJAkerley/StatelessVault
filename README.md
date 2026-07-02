@@ -1,2 +1,5 @@
 # StatelessVault
-This is a stateless encryption|decryption API.
+
+This repository now contains the `byosecret/` Azure Functions Python v2 API implementation.
+
+See: `byosecret/README.md`
