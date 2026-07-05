@@ -1,4 +1,4 @@
-name: Deploy BYOSecret to Azure Functions
+name: Deploy StatelessVault to Azure Functions
 
 on:
   push:
@@ -12,9 +12,9 @@ on:
 
 env:
   # Path to the Azure Functions app (Python v2) within the repository.
-  AZURE_FUNCTIONAPP_PACKAGE_PATH: "byosecret"
+  AZURE_FUNCTIONAPP_PACKAGE_PATH: "statelessvault"
   # Name of your Azure Function App. Update this to match your deployment.
-  AZURE_FUNCTIONAPP_NAME: "byosecret-func-app"
+  AZURE_FUNCTIONAPP_NAME: "statelessvault-func-app"
   PYTHON_VERSION: "3.11"
 
 jobs:

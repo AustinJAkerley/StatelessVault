@@ -1,11 +1,22 @@
-# BYOSecret (Azure Functions Python v2)
+# StatelessVault (Azure Functions Python v2)
 
 ## Overview
-BYOSecret is a stateless encryption/decryption API built with Azure Functions Python v2 using the decorator-based `function_app.py` model.
+StatelessVault is a stateless encryption/decryption API built with Azure Functions Python v2 using the decorator-based `function_app.py` model.
 
 Endpoints:
 - `POST /api/encrypt`
 - `POST /api/decrypt`
+
+> **Note on `functions.json`:** In the Azure Functions **Python v2** programming model,
+> endpoints are declared with the `@app.route(...)` decorators in `function_app.py`.
+> You do **not** author a `functions.json` per function — the host generates the function
+> metadata automatically by indexing the worker at startup. The valid endpoints above are
+> defined by the `encrypt` and `decrypt` routes in `function_app.py`.
+>
+> If the Function App shows the default welcome page but `/api/encrypt` returns `404`, the
+> worker failed to index the v2 functions. Set the app setting
+> `AzureWebJobsFeatureFlags=EnableWorkerIndexing` (see
+> [Azure deployment](#azure-deployment-linux-python-functions)) and restart the app.
 
 Crypto stack:
 - Key derivation: Argon2id
@@ -14,7 +25,7 @@ Crypto stack:
 The caller provides the secret each time. The service does not persist plaintext, ciphertext, secrets, sessions, keys, or user payloads.
 
 ## Threat model
-BYOSecret is intended for application-level confidentiality where clients need portable, stateless encryption.
+StatelessVault is intended for application-level confidentiality where clients need portable, stateless encryption.
 
 ### What this protects
 - Confidentiality and integrity of plaintext when ciphertext package is exposed.
@@ -107,35 +118,44 @@ Azure Functions Python v2 uses decorator-based `function_app.py`.
    ```
 2. Create resource group:
    ```bash
-   az group create --name rg-byosecret --location eastus
+   az group create --name rg-statelessvault --location eastus
    ```
 3. Create storage account:
    ```bash
    az storage account create \
-     --name byosecretstorage123 \
+     --name statelessvaultstorage123 \
      --location eastus \
-     --resource-group rg-byosecret \
+     --resource-group rg-statelessvault \
      --sku Standard_LRS
    ```
 4. Create Linux consumption Function App:
    ```bash
    az functionapp create \
-     --resource-group rg-byosecret \
+     --resource-group rg-statelessvault \
      --consumption-plan-location eastus \
      --runtime python \
      --runtime-version 3.11 \
      --functions-version 4 \
-     --name byosecret-func-app \
-     --storage-account byosecretstorage123 \
+     --name statelessvault-func-app \
+     --storage-account statelessvaultstorage123 \
      --os-type Linux
    ```
-5. Publish with Azure Functions Core Tools:
+5. Enable Python v2 worker indexing (required so `/api/encrypt` and `/api/decrypt`
+   are registered — without it the app serves only the default welcome page and the
+   routes return `404`):
    ```bash
-   func azure functionapp publish byosecret-func-app
+   az functionapp config appsettings set \
+     --name statelessvault-func-app \
+     --resource-group rg-statelessvault \
+     --settings AzureWebJobsFeatureFlags=EnableWorkerIndexing
    ```
-6. Test public endpoints:
+6. Publish with Azure Functions Core Tools:
    ```bash
-   curl -X POST https://byosecret-func-app.azurewebsites.net/api/encrypt \
+   func azure functionapp publish statelessvault-func-app
+   ```
+7. Test public endpoints:
+   ```bash
+   curl -X POST https://statelessvault-func-app.azurewebsites.net/api/encrypt \
      -H "Content-Type: application/json" \
      -d '{"plaintext":"hello","secret":"my secret"}'
    ```
@@ -152,8 +172,8 @@ Behavior:
    - Download it from the Azure Portal (Function App → *Get publish profile*) or via CLI:
      ```bash
      az functionapp deployment list-publishing-profiles \
-       --name byosecret-func-app \
-       --resource-group rg-byosecret \
+       --name statelessvault-func-app \
+       --resource-group rg-statelessvault \
        --xml
      ```
 2. If your Function App name differs, update `AZURE_FUNCTIONAPP_NAME` in the workflow `env` block.
