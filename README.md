@@ -1,5 +1,5 @@
 # StatelessVault
 
-This repository now contains the `byosecret/` Azure Functions Python v2 API implementation.
+This repository now contains the `statelessvault/` Azure Functions Python v2 API implementation.
 
-See: `byosecret/README.md`
+See: `statelessvault/README.md`
