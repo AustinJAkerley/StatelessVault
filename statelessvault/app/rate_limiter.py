@@ -1,3 +1,12 @@
+"""A simple fence, honest about being a simple fence.
+
+This is a fixed-window counter living inside one function instance. It is fast
+and it is local, which also means it counts alone. Scale out and each instance
+keeps its own tally, none of them talking. Good enough to keep one instance
+from stampeding. Not a global throttle. For that, put Azure API Management out
+front. Do not ask this fence to hold back a flood it was never built for.
+"""
+
 from __future__ import annotations
 
 import threading
