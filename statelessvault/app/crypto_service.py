@@ -1,3 +1,12 @@
+"""The part that actually does the work, and then forgets it.
+
+Your secret becomes a key by way of Argon2id, the key locks or unlocks the
+bytes with AES-256-GCM, and the moment the work is done the key is wiped from
+memory. Nothing is written to disk. Nothing is kept. I did not invent any of
+these primitives, and that is on purpose. The wilderness is no place for
+homemade crypto.
+"""
+
 from __future__ import annotations
 
 import base64
@@ -64,7 +73,7 @@ class CryptoService:
         except (InvalidTag, ValueError, UnicodeDecodeError) as exc:
             raise ApiError(
                 "decryption_failed",
-                "Unable to decrypt payload. Secret is invalid or authentication failed.",
+                "This will not open. Either the secret is wrong or someone has been at the package.",
                 status_code=400,
             ) from exc
         finally:

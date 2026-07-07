@@ -1,3 +1,11 @@
+"""The two doors into StatelessVault.
+
+This is the whole surface of the thing. Two routes, encrypt and decrypt,
+each one taking JSON, doing its work, and handing back JSON. The server
+keeps nothing. Every request arrives a stranger and leaves a stranger, and
+that suits me fine.
+"""
+
 from __future__ import annotations
 
 import json
@@ -25,10 +33,10 @@ def _parse_json_request(req: func.HttpRequest) -> dict:
     try:
         body = req.get_json()
     except ValueError as exc:
-        raise ApiError("malformed_json", "Request body must be valid JSON.", 400) from exc
+        raise ApiError("malformed_json", "The body has to be real JSON. What you sent is not.", 400) from exc
 
     if not isinstance(body, dict):
-        raise ApiError("malformed_json", "Request body must be a JSON object.", 400)
+        raise ApiError("malformed_json", "The body has to be a JSON object, not whatever this is.", 400)
 
     return body
 
